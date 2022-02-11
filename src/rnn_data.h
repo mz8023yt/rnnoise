@@ -23,10 +23,11 @@ extern const DenseLayer denoise_output;
 #define VAD_OUTPUT_SIZE 1
 extern const DenseLayer vad_output;
 
-struct RNNState {
-  float vad_gru_state[VAD_GRU_SIZE];
-  float noise_gru_state[NOISE_GRU_SIZE];
-  float denoise_gru_state[DENOISE_GRU_SIZE];
+struct RNNState
+{
+    float vad_gru_state[VAD_GRU_SIZE];
+    float noise_gru_state[NOISE_GRU_SIZE];
+    float denoise_gru_state[DENOISE_GRU_SIZE];
 };
 
 

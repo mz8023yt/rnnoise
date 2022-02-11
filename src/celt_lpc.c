@@ -35,10 +35,11 @@
 #include "pitch.h"
 
 void _celt_lpc(
-        opus_val16 *_lpc, /* out: [0...p-1] LPC coefficients      */
-        const opus_val32 *ac,  /* in:  [0...p] autocorrelation values  */
-        int p
-) {
+    opus_val16 *_lpc, /* out: [0...p-1] LPC coefficients      */
+    const opus_val32 *ac,  /* in:  [0...p] autocorrelation values  */
+    int p
+)
+{
     int i, j;
     opus_val32 r;
     opus_val32 error = ac[0];
@@ -48,8 +49,10 @@ void _celt_lpc(
     float *lpc = _lpc;
 #endif
     memset(lpc, 0, p * sizeof(*lpc));
-    if (ac[0] != 0) {
-        for (i = 0; i < p; i++) {
+    if (ac[0] != 0)
+    {
+        for (i = 0; i < p; i++)
+        {
             /* Sum up this iteration's reflection coefficient */
             opus_val32 rr = 0;
             for (j = 0; j < i; j++)
@@ -58,7 +61,8 @@ void _celt_lpc(
             r = -SHL32(rr, 3) / error;
             /*  Update LPC coefficients and total error */
             lpc[i] = SHR32(r, 3);
-            for (j = 0; j < (i + 1) >> 1; j++) {
+            for (j = 0; j < (i + 1) >> 1; j++)
+            {
                 opus_val32 tmp1, tmp2;
                 tmp1 = lpc[j];
                 tmp2 = lpc[i - 1 - j];
@@ -85,25 +89,28 @@ void _celt_lpc(
 
 
 void celt_fir(
-        const opus_val16 *x,
-        const opus_val16 *num,
-        opus_val16 *y,
-        int N,
-        int ord) {
+    const opus_val16 *x,
+    const opus_val16 *num,
+    opus_val16 *y,
+    int N,
+    int ord)
+{
     int i, j;
     opus_val16 *rnum = rnnoise_alloc(ord * sizeof(opus_val16));
-    if (rnum == NULL) {
+    if (rnum == NULL)
+    {
         printf("[%s %d] malloc failed\n", __FUNCTION__, __LINE__);
         return;
     }
 
     for (i = 0; i < ord; i++)
         rnum[i] = num[ord - i - 1];
-    for (i = 0; i < N - 3; i += 4) {
+    for (i = 0; i < N - 3; i += 4)
+    {
         opus_val32 sum[4];
         sum[0] = SHL32(EXTEND32(x[i]), SIG_SHIFT);
         sum[1] = SHL32(EXTEND32(x[i + 1]), SIG_SHIFT),
-                sum[2] = SHL32(EXTEND32(x[i + 2]), SIG_SHIFT);
+                 sum[2] = SHL32(EXTEND32(x[i + 2]), SIG_SHIFT);
         sum[3] = SHL32(EXTEND32(x[i + 3]), SIG_SHIFT);
         xcorr_kernel(rnum, x + i - ord, sum, ord);
         y[i] = ROUND16(sum[0], SIG_SHIFT);
@@ -111,7 +118,8 @@ void celt_fir(
         y[i + 2] = ROUND16(sum[2], SIG_SHIFT);
         y[i + 3] = ROUND16(sum[3], SIG_SHIFT);
     }
-    for (; i < N; i++) {
+    for (; i < N; i++)
+    {
         opus_val32 sum = SHL32(EXTEND32(x[i]), SIG_SHIFT);
         for (j = 0; j < ord; j++)
             sum = MAC16_16(sum, rnum[j], x[i + j - ord]);
@@ -125,7 +133,8 @@ void celt_iir(const opus_val32 *_x,
               opus_val32 *_y,
               int N,
               int ord,
-              opus_val16 *mem) {
+              opus_val16 *mem)
+{
 #ifdef SMALL_FOOTPRINT
     int i, j;
     for (i = 0; i < N; i++)
@@ -147,7 +156,8 @@ void celt_iir(const opus_val32 *_x,
     celt_assert((ord & 3) == 0);
     opus_val16 *rden = rnnoise_alloc(ord * sizeof(opus_val16));
     opus_val16 *y = rnnoise_alloc((N + ord) * sizeof(opus_val16));
-    if (rden == NULL || y == NULL) {
+    if (rden == NULL || y == NULL)
+    {
         rnnoise_free(rden);
         rnnoise_free(y);
 
@@ -160,7 +170,8 @@ void celt_iir(const opus_val32 *_x,
         y[i] = -mem[ord - i - 1];
     for (; i < N + ord; i++)
         y[i] = 0;
-    for (i = 0; i < N - 3; i += 4) {
+    for (i = 0; i < N - 3; i += 4)
+    {
         /* Unroll by 4 as if it were an FIR filter */
         opus_val32 sum[4];
         sum[0] = _x[i];
@@ -186,7 +197,8 @@ void celt_iir(const opus_val32 *_x,
         y[i + ord + 3] = -SROUND16(sum[3], SIG_SHIFT);
         _y[i + 3] = sum[3];
     }
-    for (; i < N; i++) {
+    for (; i < N; i++)
+    {
         opus_val32 sum = _x[i];
         for (j = 0; j < ord; j++)
             sum -= MULT16_16(rden[j], y[i + j]);
@@ -201,29 +213,35 @@ void celt_iir(const opus_val32 *_x,
 }
 
 int _celt_autocorr(
-        const opus_val16 *x,   /*  in: [0...n-1] samples x   */
-        opus_val32 *ac,  /* out: [0...lag-1] ac values */
-        const opus_val16 *window,
-        int overlap,
-        int lag,
-        int n) {
+    const opus_val16 *x,   /*  in: [0...n-1] samples x   */
+    opus_val32 *ac,  /* out: [0...lag-1] ac values */
+    const opus_val16 *window,
+    int overlap,
+    int lag,
+    int n)
+{
     opus_val32 d;
     int i, k;
     int fastN = n - lag;
     int shift;
     const opus_val16 *xptr;
     opus_val16 *xx = rnnoise_alloc(n * sizeof(opus_val16));
-    if (xx == NULL) {
+    if (xx == NULL)
+    {
         printf("[%s %d] malloc failed\n", __FUNCTION__, __LINE__);
         return 0;
     }
     celt_assert(n > 0);
     celt_assert(overlap >= 0);
-    if (overlap == 0) {
+    if (overlap == 0)
+    {
         xptr = x;
-    } else {
+    }
+    else
+    {
         memcpy(xx, x, sizeof(opus_val16) * n);
-        for (i = 0; i < overlap; i++) {
+        for (i = 0; i < overlap; i++)
+        {
             xx[i] = MULT16_16_Q15(x[i], window[i]);
             xx[n - i - 1] = MULT16_16_Q15(x[n - i - 1], window[i]);
         }
@@ -239,7 +257,7 @@ int _celt_autocorr(
         {
             ac0 += SHR32(MULT16_16(xptr[i], xptr[i]), 9);
             ac0 += SHR32(MULT16_16(xptr[i + 1], xptr[i + 1]), 9);
-    }
+        }
 
         shift = celt_ilog2(ac0) - 30 + 10;
         shift = (shift) / 2;
@@ -254,7 +272,8 @@ int _celt_autocorr(
     }
 #endif
     celt_pitch_xcorr(xptr, xptr, ac, fastN, lag + 1);
-    for (k = 0; k <= lag; k++) {
+    for (k = 0; k <= lag; k++)
+    {
         for (i = k + fastN, d = 0; i < n; i++)
             d = MAC16_16(d, xptr[i], xptr[i - k]);
         ac[k] += d;

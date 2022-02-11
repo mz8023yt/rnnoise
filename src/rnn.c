@@ -38,9 +38,11 @@
 #include "rnn_data.h"
 #include <stdio.h>
 
-static OPUS_INLINE float fastPow2(float p) {
+static OPUS_INLINE float fastPow2(float p)
+{
     float clipp = (p < -126) ? -126.0f : p;
-    union {
+    union
+    {
         uint32_t i;
         float f;
     } v = {(uint32_t) ((1 << 23) * (clipp + 126.94269504f))};
@@ -48,42 +50,54 @@ static OPUS_INLINE float fastPow2(float p) {
 }
 
 static OPUS_INLINE float
-fastExp(float p) {
+fastExp(float p)
+{
     return fastPow2(1.442695040f * p);
 }
 
-static OPUS_INLINE float tansig_approx(float x) {
+static OPUS_INLINE float tansig_approx(float x)
+{
     const float z = fastExp((WEIGHTS_SCALE * 2) * x);
     return (z - 1) / (z + 1);
 }
 
-static OPUS_INLINE float sigmoid_approx(float x) {
+static OPUS_INLINE float sigmoid_approx(float x)
+{
     return 1.f / (1.f + fastExp(-WEIGHTS_SCALE * x));
 }
 
-static OPUS_INLINE float relu(float x) {
+static OPUS_INLINE float relu(float x)
+{
     return WEIGHTS_SCALE * x * (x > 0);
 }
 
-void compute_dense(const DenseLayer *layer, float *output, const float *input) {
+void compute_dense(const DenseLayer *layer, float *output, const float *input)
+{
     int i, j;
     int M = layer->nb_inputs;
     int N = layer->nb_neurons;
     int stride = N;
     int idx = 0;
-    if (layer->activation == ACTIVATION_SIGMOID) {
-        for (i = 0; i < N; i++) { /* Compute update gate. */
+    if (layer->activation == ACTIVATION_SIGMOID)
+    {
+        for (i = 0; i < N; i++)   /* Compute update gate. */
+        {
             float sum = layer->bias[i];
-            for (j = 0; j < M; j++) {
+            for (j = 0; j < M; j++)
+            {
                 idx = j * stride + i;
                 sum += layer->input_weights[idx] * input[j];
             }
             output[i] = sigmoid_approx(sum);
         }
-    } else if (layer->activation == ACTIVATION_TANH) {
-        for (i = 0; i < N; i++) {    /* Compute update gate. */
+    }
+    else if (layer->activation == ACTIVATION_TANH)
+    {
+        for (i = 0; i < N; i++)      /* Compute update gate. */
+        {
             float sum = layer->bias[i];
-            for (j = 0; j < M; j++) {
+            for (j = 0; j < M; j++)
+            {
                 idx = j * stride + i;
                 sum += layer->input_weights[idx] * input[j];
             }
@@ -91,24 +105,32 @@ void compute_dense(const DenseLayer *layer, float *output, const float *input) {
 
         }
 
-    } else if (layer->activation == ACTIVATION_RELU) {
-        for (i = 0; i < N; i++) { /* Compute update gate. */
+    }
+    else if (layer->activation == ACTIVATION_RELU)
+    {
+        for (i = 0; i < N; i++)   /* Compute update gate. */
+        {
             float sum = layer->bias[i];
-            for (j = 0; j < M; j++) {
+            for (j = 0; j < M; j++)
+            {
                 idx = j * stride + i;
                 sum += layer->input_weights[idx] * input[j];
             }
             output[i] = relu(sum);
         }
 
-    } else {
+    }
+    else
+    {
         *(int *) 0 = 0;
     }
 }
 
-void compute_gru(float *update, float *reset, const GRULayer *gru, float *state, const float *input) {
+void compute_gru(float *update, float *reset, const GRULayer *gru, float *state, const float *input)
+{
     int i, j;
-    if ((reset == NULL) || (update == NULL)) {
+    if ((reset == NULL) || (update == NULL))
+    {
         printf("[%s %d] malloc failed\n", __FUNCTION__, __LINE__);
         rnnoise_free(update);
         rnnoise_free(reset);
@@ -118,20 +140,24 @@ void compute_gru(float *update, float *reset, const GRULayer *gru, float *state,
     int N = gru->nb_neurons;
     int stride = 3 * N;
     int idx = 0;
-    if (M > N) {
-        for (i = 0; i < N; i++) {
+    if (M > N)
+    {
+        for (i = 0; i < N; i++)
+        {
             /* Compute update gate. */
             float sum_update = gru->bias[i];
             /* Compute reset gate. */
             float sum_reset = gru->bias[N + i];
-            for (j = 0; j < N; j++) {
+            for (j = 0; j < N; j++)
+            {
                 idx = j * stride + i;
                 sum_update += gru->input_weights[idx] * input[j];
                 sum_reset += gru->input_weights[N + idx] * input[j];
                 sum_reset += gru->recurrent_weights[N + idx] * state[j];
                 sum_update += gru->recurrent_weights[idx] * state[j];
             }
-            for (j = N; j < M; j++) {
+            for (j = N; j < M; j++)
+            {
                 idx = j * stride + i;
                 sum_update += gru->input_weights[idx] * input[j];
                 sum_reset += gru->input_weights[N + idx] * input[j];
@@ -139,81 +165,105 @@ void compute_gru(float *update, float *reset, const GRULayer *gru, float *state,
             update[i] = sigmoid_approx(sum_update);
             reset[i] = sigmoid_approx(sum_reset);
         }
-        if (gru->activation == ACTIVATION_SIGMOID) {
-            for (i = 0; i < N; i++) {
+        if (gru->activation == ACTIVATION_SIGMOID)
+        {
+            for (i = 0; i < N; i++)
+            {
                 /* Compute output. */
                 float sum_output = gru->bias[(N << 1) + i];
-                for (j = 0; j < N; j++) {
+                for (j = 0; j < N; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->recurrent_weights[(N << 1) + idx] * state[j] * reset[j];
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
-                for (j = N; j < M; j++) {
+                for (j = N; j < M; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
                 state[i] = update[i] * state[i] + (1 - update[i]) * sigmoid_approx(sum_output);
             }
-        } else if (gru->activation == ACTIVATION_TANH) {
-            for (i = 0; i < N; i++) {
+        }
+        else if (gru->activation == ACTIVATION_TANH)
+        {
+            for (i = 0; i < N; i++)
+            {
                 /* Compute output. */
                 float sum_output = gru->bias[(N << 1) + i];
-                for (j = 0; j < N; j++) {
+                for (j = 0; j < N; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->recurrent_weights[(N << 1) + idx] * state[j] * reset[j];
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
-                for (j = N; j < M; j++) {
+                for (j = N; j < M; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
                 state[i] = update[i] * state[i] + (1 - update[i]) * tansig_approx(sum_output);
             }
-        } else if (gru->activation == ACTIVATION_RELU) {
-            for (i = 0; i < N; i++) {
+        }
+        else if (gru->activation == ACTIVATION_RELU)
+        {
+            for (i = 0; i < N; i++)
+            {
                 /* Compute output. */
                 float sum_output = gru->bias[(N << 1) + i];
-                for (j = 0; j < N; j++) {
+                for (j = 0; j < N; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->recurrent_weights[(N << 1) + idx] * state[j] * reset[j];
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
-                for (j = N; j < M; j++) {
+                for (j = N; j < M; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
                 state[i] = update[i] * state[i] + (1 - update[i]) * relu(sum_output);
             }
-        } else {
-            for (i = 0; i < N; i++) {
+        }
+        else
+        {
+            for (i = 0; i < N; i++)
+            {
                 /* Compute output. */
                 float sum_output = gru->bias[(N << 1) + i];
-                for (j = 0; j < N; j++) {
+                for (j = 0; j < N; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->recurrent_weights[(N << 1) + idx] * state[j] * reset[j];
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
-                for (j = N; j < M; j++) {
+                for (j = N; j < M; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
                 state[i] = update[i] * state[i] + (1 - update[i]) * sum_output;
             }
         }
-    } else {
-        for (i = 0; i < N; i++) {
+    }
+    else
+    {
+        for (i = 0; i < N; i++)
+        {
             /* Compute update gate. */
             float sum_update = gru->bias[i];
             /* Compute reset gate. */
             float sum_reset = gru->bias[N + i];
-            for (j = M; j < N; j++) {
+            for (j = M; j < N; j++)
+            {
                 idx = j * stride + i;
                 sum_update += gru->input_weights[idx] * input[j];
                 sum_reset += gru->input_weights[N + idx] * input[j];
                 sum_reset += gru->recurrent_weights[N + idx] * state[j];
                 sum_update += gru->recurrent_weights[idx] * state[j];
             }
-            for (j = 0; j < M; j++) {
+            for (j = 0; j < M; j++)
+            {
                 idx = j * stride + i;
                 sum_update += gru->input_weights[idx] * input[j];
                 sum_reset += gru->input_weights[N + idx] * input[j];
@@ -221,60 +271,79 @@ void compute_gru(float *update, float *reset, const GRULayer *gru, float *state,
             update[i] = sigmoid_approx(sum_update);
             reset[i] = sigmoid_approx(sum_reset);
         }
-        if (gru->activation == ACTIVATION_SIGMOID) {
-            for (i = 0; i < N; i++) {
+        if (gru->activation == ACTIVATION_SIGMOID)
+        {
+            for (i = 0; i < N; i++)
+            {
                 /* Compute output. */
                 float sum_output = gru->bias[(N << 1) + i];
-                for (j = M; j < N; j++) {
+                for (j = M; j < N; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->recurrent_weights[(N << 1) + idx] * state[j] * reset[j];
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
-                for (j = 0; j < M; j++) {
+                for (j = 0; j < M; j++)
+                {
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
                 state[i] = update[i] * state[i] + (1 - update[i]) * sigmoid_approx(sum_output);
             }
-        } else if (gru->activation == ACTIVATION_TANH) {
-            for (i = 0; i < N; i++) {
+        }
+        else if (gru->activation == ACTIVATION_TANH)
+        {
+            for (i = 0; i < N; i++)
+            {
                 /* Compute output. */
                 float sum_output = gru->bias[(N << 1) + i];
-                for (j = M; j < N; j++) {
+                for (j = M; j < N; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->recurrent_weights[(N << 1) + idx] * state[j] * reset[j];
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
-                for (j = 0; j < M; j++) {
+                for (j = 0; j < M; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
                 state[i] = update[i] * state[i] + (1 - update[i]) * tansig_approx(sum_output);
             }
-        } else if (gru->activation == ACTIVATION_RELU) {
-            for (i = 0; i < N; i++) {
+        }
+        else if (gru->activation == ACTIVATION_RELU)
+        {
+            for (i = 0; i < N; i++)
+            {
                 /* Compute output. */
                 float sum_output = gru->bias[(N << 1) + i];
-                for (j = M; j < N; j++) {
+                for (j = M; j < N; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->recurrent_weights[(N << 1) + idx] * state[j] * reset[j];
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
-                for (j = 0; j < M; j++) {
+                for (j = 0; j < M; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
                 state[i] = update[i] * state[i] + (1 - update[i]) * relu(sum_output);
             }
-        } else {
-            for (i = 0; i < N; i++) {
+        }
+        else
+        {
+            for (i = 0; i < N; i++)
+            {
                 /* Compute output. */
                 float sum_output = gru->bias[(N << 1) + i];
-                for (j = M; j < N; j++) {
+                for (j = M; j < N; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->recurrent_weights[(N << 1) + idx] * state[j] * reset[j];
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
-                for (j = 0; j < M; j++) {
+                for (j = 0; j < M; j++)
+                {
                     idx = j * stride + i;
                     sum_output += gru->input_weights[(N << 1) + idx] * input[j];
                 }
@@ -286,9 +355,11 @@ void compute_gru(float *update, float *reset, const GRULayer *gru, float *state,
 
 #define INPUT_SIZE 42
 
-void compute_rnn(RNNState *rnn, float *gains, float *vad, const float *input) {
+void compute_rnn(RNNState *rnn, float *gains, float *vad, const float *input)
+{
     float *cache = rnnoise_alloc(MAX_NEURONS * 5 * sizeof(float));
-    if (cache == NULL) {
+    if (cache == NULL)
+    {
         printf("[%s %d] malloc failed\n", __FUNCTION__, __LINE__);
         return;
     }

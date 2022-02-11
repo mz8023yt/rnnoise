@@ -39,21 +39,23 @@
 
 typedef signed char rnn_weight;
 
-typedef struct {
-  const rnn_weight *bias;
-  const rnn_weight *input_weights;
-  int nb_inputs;
-  int nb_neurons;
-  int activation;
+typedef struct
+{
+    const rnn_weight *bias;
+    const rnn_weight *input_weights;
+    int nb_inputs;
+    int nb_neurons;
+    int activation;
 } DenseLayer;
 
-typedef struct {
-  const rnn_weight *bias;
-  const rnn_weight *input_weights;
-  const rnn_weight *recurrent_weights;
-  int nb_inputs;
-  int nb_neurons;
-  int activation;
+typedef struct
+{
+    const rnn_weight *bias;
+    const rnn_weight *input_weights;
+    const rnn_weight *recurrent_weights;
+    int nb_inputs;
+    int nb_neurons;
+    int activation;
 } GRULayer;
 
 typedef struct RNNState RNNState;

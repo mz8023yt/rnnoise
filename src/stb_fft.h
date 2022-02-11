@@ -36,26 +36,30 @@ extern "C"
 #define stb_real_t  float
 #endif
 
-typedef struct {
+typedef struct
+{
     stb_real_t real;
     stb_real_t imag;
 } cmplx;
 
-typedef struct {
+typedef struct
+{
     int count;
     int *radix;
     int *remainder;
     int *offsets;
 } stb_fft_stages;
 
-typedef struct {
+typedef struct
+{
     int N;
     cmplx *twiddles;
     cmplx *twiddles_ordered;
     stb_fft_stages stages;
 } stb_fft_plan;
 
-typedef struct {
+typedef struct
+{
     stb_fft_plan *half_plan;
     cmplx *buffer;
     cmplx *twiddles;
@@ -149,25 +153,30 @@ void STB_IFFT_C2R(cmplx *input, stb_real_t *output, int n);
 #define STB_PI    ((stb_real_t)3.141592653589793238462643383279502884197169399375105820974944)
 #endif
 
-void stbSinCos(double x, stb_real_t *pSin, stb_real_t *pCos) {
+void stbSinCos(double x, stb_real_t *pSin, stb_real_t *pCos)
+{
     *pSin = (stb_real_t) sin(x);
     *pCos = (stb_real_t) cos(x);
 }
 
-void stb_make_twiddles(int n, int count, cmplx *twiddles) {
+void stb_make_twiddles(int n, int count, cmplx *twiddles)
+{
     double w_pi = STB_TWOPI / n;
     double t = 0;
-    for (int i = 0; i < count; ++i) {
+    for (int i = 0; i < count; ++i)
+    {
         stbSinCos(t, &twiddles[i].imag, &twiddles[i].real);
         t += w_pi;
     }
 };
 
-int stb_make_twiddles_sequential(int n, cmplx *twiddles, stb_fft_stages *stages) {
+int stb_make_twiddles_sequential(int n, cmplx *twiddles, stb_fft_stages *stages)
+{
     int size = 0;
     {
         int offset = 0;
-        for (int s = 0; s < stages->count; s++) {
+        for (int s = 0; s < stages->count; s++)
+        {
             int r = stages->radix[s];
             int count = stages->remainder[s];
             int amount = (r <= 8) ? (r - 1) * (count - 1) : 0;
@@ -175,22 +184,28 @@ int stb_make_twiddles_sequential(int n, cmplx *twiddles, stb_fft_stages *stages)
             offset += amount;
         }
         size = offset;
-        for (int s = 0; s < stages->count; s++) {
+        for (int s = 0; s < stages->count; s++)
+        {
             int count = stages->offsets[s];
             offset -= count;
             stages->offsets[s] = offset;
         }
     }
-    if (twiddles) {
+    if (twiddles)
+    {
         int w = 1;
-        for (int s = 0; s < stages->count; s++) {
+        for (int s = 0; s < stages->count; s++)
+        {
             double w_pi = STB_TWOPI * w / n;
             const int r = stages->radix[s];
             const int count = stages->remainder[s];
             int offset = stages->offsets[s];
-            if (r <= 8) {
-                for (int i = 1; i < count; i++) {
-                    for (int j = 1; j < r; j++) {
+            if (r <= 8)
+            {
+                for (int i = 1; i < count; i++)
+                {
+                    for (int j = 1; j < r; j++)
+                    {
                         stbSinCos(w_pi * i * j, &twiddles[offset].imag, &twiddles[offset].real);
                         offset++;
                     }
@@ -202,48 +217,59 @@ int stb_make_twiddles_sequential(int n, cmplx *twiddles, stb_fft_stages *stages)
     return size;
 };
 
-typedef struct {
+typedef struct
+{
     int calc_twiddles;
     int stage_count;
     int twiddles_size;
 } stb_stage_info;
 
-stb_stage_info stb_calculate_stages(int n, stb_fft_plan *plan) {
+stb_stage_info stb_calculate_stages(int n, stb_fft_plan *plan)
+{
     int calc_twiddles = 0;
     int stage = 0;
     int twiddles_size = 0;
-    while (n > 1) {
+    while (n > 1)
+    {
         int i = 8;
-        for (; i > 1; i--) {
-            if (!(n % i)) {
+        for (; i > 1; i--)
+        {
+            if (!(n % i))
+            {
                 twiddles_size += ((i - 1) * (n - 1));
                 break;
             }
         }
-        if (i == 1) {
+        if (i == 1)
+        {
             calc_twiddles = 1;
             i = 7;
-            for (; i <= n; i++) {
-                if (!(n % i)) {
+            for (; i <= n; i++)
+            {
+                if (!(n % i))
+                {
                     break;
                 }
             }
         }
         n /= i;
-        if (plan) {
+        if (plan)
+        {
             plan->stages.radix[stage] = i;
             plan->stages.remainder[stage] = n;
         }
         stage++;
     }
-    stb_stage_info result = {
-            calc_twiddles, stage, twiddles_size
+    stb_stage_info result =
+    {
+        calc_twiddles, stage, twiddles_size
     };
     return result;
 }
 
 
-int stb_make_fft_plan(int N, stb_fft_plan *plan) {
+int stb_make_fft_plan(int N, stb_fft_plan *plan)
+{
     if (N == 0)
         return 0;
     stb_stage_info info = stb_calculate_stages(N, NULL);
@@ -252,13 +278,14 @@ int stb_make_fft_plan(int N, stb_fft_plan *plan) {
     const int size_remainder = info.stage_count * sizeof(int);
     const int size_offsets = info.stage_count * sizeof(int);
     const int twiddles_ordered_size =
-            info.twiddles_size * sizeof(cmplx);
+        info.twiddles_size * sizeof(cmplx);
     const int twiddles_size = N * sizeof(cmplx) * info.calc_twiddles;
     const int total_size =
-            size_plan
-            + twiddles_size
-            + size_radix + size_remainder + size_offsets + twiddles_ordered_size;
-    if (plan) {
+        size_plan
+        + twiddles_size
+        + size_radix + size_remainder + size_offsets + twiddles_ordered_size;
+    if (plan)
+    {
         uint8_t *data = (uint8_t * )(plan);
         uint8_t *data_twiddles = data + size_plan;
         uint8_t *data_radix = data_twiddles + twiddles_size;
@@ -272,7 +299,8 @@ int stb_make_fft_plan(int N, stb_fft_plan *plan) {
         plan->stages.count = info.stage_count;
         plan->twiddles_ordered = (cmplx *) (data_twiddles_ordered);
         plan->N = N;
-        if (plan->twiddles) {
+        if (plan->twiddles)
+        {
             stb_make_twiddles(N, N, plan->twiddles);
         }
         stb_calculate_stages(N, plan);
@@ -281,7 +309,8 @@ int stb_make_fft_plan(int N, stb_fft_plan *plan) {
     return total_size;
 }
 
-stb_fft_plan *stb_fft_plan_dft_1d(int N) {
+stb_fft_plan *stb_fft_plan_dft_1d(int N)
+{
     if (N == 0) return 0;
     stb_stage_info info = stb_calculate_stages(N, NULL);
     const int size_plan = sizeof(stb_fft_plan);
@@ -289,14 +318,15 @@ stb_fft_plan *stb_fft_plan_dft_1d(int N) {
     const int size_remainder = info.stage_count * sizeof(int);
     const int size_offsets = info.stage_count * sizeof(int);
     const int twiddles_ordered_size =
-            info.twiddles_size * sizeof(cmplx);
+        info.twiddles_size * sizeof(cmplx);
     const int twiddles_size = N * sizeof(cmplx) * info.calc_twiddles;
     const int total_size =
-            size_plan
-            + twiddles_size
-            + size_radix + size_remainder + size_offsets + twiddles_ordered_size;
+        size_plan
+        + twiddles_size
+        + size_radix + size_remainder + size_offsets + twiddles_ordered_size;
     stb_fft_plan *plan = (stb_fft_plan *) calloc(total_size, 1);
-    if (plan) {
+    if (plan)
+    {
         uint8_t *data = (uint8_t * )(plan);
         uint8_t *data_twiddles = data + size_plan;
         uint8_t *data_radix = data_twiddles + twiddles_size;
@@ -310,7 +340,8 @@ stb_fft_plan *stb_fft_plan_dft_1d(int N) {
         plan->stages.count = info.stage_count;
         plan->twiddles_ordered = (cmplx *) (data_twiddles_ordered);
         plan->N = N;
-        if (plan->twiddles) {
+        if (plan->twiddles)
+        {
             stb_make_twiddles(N, N, plan->twiddles);
         }
         stb_calculate_stages(N, plan);
@@ -319,9 +350,11 @@ stb_fft_plan *stb_fft_plan_dft_1d(int N) {
     return plan;
 }
 
-stb_fft_real_plan *stb_fft_real_plan_dft_1d(int N) {
+stb_fft_real_plan *stb_fft_real_plan_dft_1d(int N)
+{
     if (N == 0) return 0;
-    if (N & 1) {
+    if (N & 1)
+    {
         fprintf(stderr, "Real FFT must be even.\n");
         return 0;
     }
@@ -329,12 +362,14 @@ stb_fft_real_plan *stb_fft_real_plan_dft_1d(int N) {
     int c_plan_size = stb_make_fft_plan(N, NULL);
     int mem_needed = sizeof(stb_fft_real_plan) + c_plan_size + sizeof(cmplx) * (N * 3 / 2);
     stb_fft_real_plan *plan = (stb_fft_real_plan *) calloc(mem_needed, 1);
-    if (plan) {
+    if (plan)
+    {
         plan->half_plan = (stb_fft_plan *) (plan + 1);
         plan->buffer = (cmplx *) (((char *) plan->half_plan) + c_plan_size);
         plan->twiddles = plan->buffer + N;
         stb_make_fft_plan(N, plan->half_plan);
-        for (int i = 0; i < N / 2; ++i) {
+        for (int i = 0; i < N / 2; ++i)
+        {
             stbSinCos(-STB_PI * ((double) (i + 1) / N + 0.5), &plan->twiddles[i].imag, &plan->twiddles[i].real);
         }
     }
@@ -343,22 +378,28 @@ stb_fft_real_plan *stb_fft_real_plan_dft_1d(int N) {
 
 
 void stb_general_dit(cmplx *twiddles, cmplx *out, int count,
-                     int cur_sign, int radix, int N, int reverse) {
+                     int cur_sign, int radix, int N, int reverse)
+{
     cmplx *scratch = (cmplx *) calloc(radix, sizeof(cmplx));
     if (scratch == 0)
         return;
-    if (reverse) {
-        for (int butterfly = 0; butterfly < count; ++butterfly) {
+    if (reverse)
+    {
+        for (int butterfly = 0; butterfly < count; ++butterfly)
+        {
             int idx = butterfly;
-            for (int r = 0; r < radix; ++r) {
+            for (int r = 0; r < radix; ++r)
+            {
                 scratch[r] = out[idx];
                 idx += count;
             }
             idx = butterfly;
-            for (int r = 0; r < radix; ++r) {
+            for (int r = 0; r < radix; ++r)
+            {
                 int tw_idx = 0;
                 out[idx] = *scratch;
-                for (int cr = 1; cr < radix; ++cr) {
+                for (int cr = 1; cr < radix; ++cr)
+                {
                     tw_idx += cur_sign * idx;
                     if (tw_idx >= N)
                         tw_idx -= N;
@@ -370,18 +411,24 @@ void stb_general_dit(cmplx *twiddles, cmplx *out, int count,
                 idx += count;
             }
         }
-    } else {
-        for (int butterfly = 0; butterfly < count; ++butterfly) {
+    }
+    else
+    {
+        for (int butterfly = 0; butterfly < count; ++butterfly)
+        {
             int idx = butterfly;
-            for (int r = 0; r < radix; ++r) {
+            for (int r = 0; r < radix; ++r)
+            {
                 scratch[r] = out[idx];
                 idx += count;
             }
             idx = butterfly;
-            for (int r = 0; r < radix; ++r) {
+            for (int r = 0; r < radix; ++r)
+            {
                 int tw_idx = 0;
                 out[idx] = *scratch;
-                for (int cr = 1; cr < radix; ++cr) {
+                for (int cr = 1; cr < radix; ++cr)
+                {
                     tw_idx += cur_sign * idx;
                     if (tw_idx >= N)
                         tw_idx -= N;
@@ -397,7 +444,8 @@ void stb_general_dit(cmplx *twiddles, cmplx *out, int count,
     free(scratch);
 }
 
-void stb_radix_2_dit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_2_dit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T1 = out[0].real;
@@ -410,7 +458,8 @@ void stb_radix_2_dit(const cmplx *tw, cmplx *out, int count) {
     out[0].imag = T3 + T4;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T1_0 = output[0].real;
         stb_real_t T8 = output[0].imag;
         stb_real_t T3_0 = output[count].real;
@@ -428,7 +477,8 @@ void stb_radix_2_dit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_3_dit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_3_dit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T1 = out[0].real;
@@ -449,7 +499,8 @@ void stb_radix_3_dit(const cmplx *tw, cmplx *out, int count) {
     out[2 * count].imag = T12 - T9;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T1_0 = output[0].real;
         stb_real_t T18 = output[0].imag;
         stb_real_t T3_0 = output[count].real;
@@ -479,7 +530,8 @@ void stb_radix_3_dit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_4_dit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_4_dit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T2 = out[2 * count].real;
@@ -501,7 +553,8 @@ void stb_radix_4_dit(const cmplx *tw, cmplx *out, int count) {
     out[3 * count].real = T11 - (T12 - T13);
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T1_0 = output[0].real;
         stb_real_t T25 = output[0].imag;
         stb_real_t T3_0 = output[2 * count].real;
@@ -536,7 +589,8 @@ void stb_radix_4_dit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_5_dit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_5_dit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T1 = out[0].real;
@@ -573,7 +627,8 @@ void stb_radix_5_dit(const cmplx *tw, cmplx *out, int count) {
     out[2 * count].imag = T31 + T32;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T1_0 = output[0].real;
         stb_real_t T40 = output[0].imag;
         stb_real_t T3_0 = output[count].real;
@@ -629,7 +684,8 @@ void stb_radix_5_dit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_6_dit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_6_dit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T2 = out[3 * count].real;
@@ -669,7 +725,8 @@ void stb_radix_6_dit(const cmplx *tw, cmplx *out, int count) {
     out[4 * count].imag = T36 + T35;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T49 = output[0].imag;
         stb_real_t T3_0 = output[3 * count].real;
         stb_real_t T5_0 = output[3 * count].imag;
@@ -732,7 +789,8 @@ void stb_radix_6_dit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_7_dit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_7_dit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T1 = out[0].real;
@@ -809,7 +867,8 @@ void stb_radix_7_dit(const cmplx *tw, cmplx *out, int count) {
     out[4 * count].imag = T34 - T29;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T1_0 = output[0].real;
         stb_real_t T53 = output[0].imag;
         stb_real_t T3_0 = output[count].real;
@@ -914,7 +973,8 @@ void stb_radix_7_dit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_8_dit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_8_dit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T2 = out[4 * count].real;
@@ -968,7 +1028,8 @@ void stb_radix_8_dit(const cmplx *tw, cmplx *out, int count) {
     out[3 * count].real = T41 + T44;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T70 = output[0].imag;
         stb_real_t T3_0 = output[4 * count].real;
         stb_real_t T5_0 = output[4 * count].imag;
@@ -1048,7 +1109,8 @@ void stb_radix_8_dit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_2_idit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_2_idit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T1 = out[0].real;
@@ -1061,7 +1123,8 @@ void stb_radix_2_idit(const cmplx *tw, cmplx *out, int count) {
     out[0].imag = T3 + T4;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T1_0 = output[0].real;
         stb_real_t T8 = output[0].imag;
         stb_real_t T3_0 = output[count].real;
@@ -1079,7 +1142,8 @@ void stb_radix_2_idit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_3_idit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_3_idit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T1 = out[0].real;
@@ -1100,7 +1164,8 @@ void stb_radix_3_idit(const cmplx *tw, cmplx *out, int count) {
     out[count].real = T11 + T12;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T1_0 = output[0].real;
         stb_real_t T18 = output[0].imag;
         stb_real_t T3_0 = output[count].real;
@@ -1130,7 +1195,8 @@ void stb_radix_3_idit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_4_idit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_4_idit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T2 = out[2 * count].real;
@@ -1152,7 +1218,8 @@ void stb_radix_4_idit(const cmplx *tw, cmplx *out, int count) {
     out[3 * count].real = T11 + T12 - T13;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T1_0 = output[0].real;
         stb_real_t T25 = output[0].imag;
         stb_real_t T3_0 = output[2 * count].real;
@@ -1187,7 +1254,8 @@ void stb_radix_4_idit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_5_idit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_5_idit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T1 = out[0].real;
@@ -1222,7 +1290,8 @@ void stb_radix_5_idit(const cmplx *tw, cmplx *out, int count) {
     out[2 * count].imag = T31 + T32;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T1_0 = output[0].real;
         stb_real_t T40 = output[0].imag;
         stb_real_t T3_0 = output[count].real;
@@ -1277,7 +1346,8 @@ void stb_radix_5_idit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_6_idit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_6_idit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T2 = out[3 * count].real;
@@ -1317,7 +1387,8 @@ void stb_radix_6_idit(const cmplx *tw, cmplx *out, int count) {
     out[4 * count].real = T11 - STB_KP5 * T14 + T36;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T49 = output[0].imag;
         stb_real_t T3_0 = output[3 * count].real;
         stb_real_t T5_0 = output[3 * count].imag;
@@ -1380,7 +1451,8 @@ void stb_radix_6_idit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_7_idit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_7_idit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T1 = out[0].real;
@@ -1457,7 +1529,8 @@ void stb_radix_7_idit(const cmplx *tw, cmplx *out, int count) {
     out[2 * count].real = T30 + T34;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T1_0 = output[0].real;
         stb_real_t T53 = output[0].imag;
         stb_real_t T3_0 = output[count].real;
@@ -1562,7 +1635,8 @@ void stb_radix_7_idit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_radix_8_idit(const cmplx *tw, cmplx *out, int count) {
+void stb_radix_8_idit(const cmplx *tw, cmplx *out, int count)
+{
     int m;
     cmplx *output;
     stb_real_t T2 = out[4 * count].real;
@@ -1616,7 +1690,8 @@ void stb_radix_8_idit(const cmplx *tw, cmplx *out, int count) {
     out[count].imag = T41 + T44;
     output = out + 1;
     m = 1;
-    while (m < count) {
+    while (m < count)
+    {
         stb_real_t T70 = output[0].imag;
         stb_real_t T3_0 = output[4 * count].real;
         stb_real_t T5_0 = output[4 * count].imag;
@@ -1696,124 +1771,147 @@ void stb_radix_8_idit(const cmplx *tw, cmplx *out, int count) {
     }
 }
 
-void stb_recursive_mixed_radix_dit(const stb_fft_plan *plan, int stage, cmplx *in, cmplx *out, int sign) {
+void stb_recursive_mixed_radix_dit(const stb_fft_plan *plan, int stage, cmplx *in, cmplx *out, int sign)
+{
     const int radix = plan->stages.radix[stage];
     const int count = plan->stages.remainder[stage];
     cmplx *twiddles = plan->twiddles;
     const int tw_offset = plan->stages.offsets[stage];
     cmplx *tw_sequential = &plan->twiddles_ordered[tw_offset];
-    if (count == 1) {
-        for (int i = 0; i < radix; i++) {
+    if (count == 1)
+    {
+        for (int i = 0; i < radix; i++)
+        {
             out[i] = in[i * sign];
         }
-    } else {
+    }
+    else
+    {
         const int cur_sign = sign * radix;
-        for (int i = 0; i < radix; ++i) {
+        for (int i = 0; i < radix; ++i)
+        {
             stb_recursive_mixed_radix_dit(plan, stage + 1, &in[sign * i], &out[count * i], cur_sign);
         }
     }
-    switch (radix) {
-        case 2:
-            stb_radix_2_dit(tw_sequential, out, count);
-            break;
-        case 3:
-            stb_radix_3_dit(tw_sequential, out, count);
-            break;
-        case 4:
-            stb_radix_4_dit(tw_sequential, out, count);
-            break;
-        case 5:
-            stb_radix_5_dit(tw_sequential, out, count);
-            break;
-        case 6:
-            stb_radix_6_dit(tw_sequential, out, count);
-            break;
-        case 7:
-            stb_radix_7_dit(tw_sequential, out, count);
-            break;
-        case 8:
-            stb_radix_8_dit(tw_sequential, out, count);
-            break;
-        default:
-            stb_general_dit(twiddles, out, count, sign, radix, plan->N, 0);
-            break;
+    switch (radix)
+    {
+    case 2:
+        stb_radix_2_dit(tw_sequential, out, count);
+        break;
+    case 3:
+        stb_radix_3_dit(tw_sequential, out, count);
+        break;
+    case 4:
+        stb_radix_4_dit(tw_sequential, out, count);
+        break;
+    case 5:
+        stb_radix_5_dit(tw_sequential, out, count);
+        break;
+    case 6:
+        stb_radix_6_dit(tw_sequential, out, count);
+        break;
+    case 7:
+        stb_radix_7_dit(tw_sequential, out, count);
+        break;
+    case 8:
+        stb_radix_8_dit(tw_sequential, out, count);
+        break;
+    default:
+        stb_general_dit(twiddles, out, count, sign, radix, plan->N, 0);
+        break;
     }
 }
 
-void stb_recursive_mixed_radix_idit(const stb_fft_plan *plan, int stage, cmplx *in, cmplx *out, int sign) {
+void stb_recursive_mixed_radix_idit(const stb_fft_plan *plan, int stage, cmplx *in, cmplx *out, int sign)
+{
     const int radix = plan->stages.radix[stage];
     const int count = plan->stages.remainder[stage];
     cmplx *twiddles = plan->twiddles;
     const int tw_offset = plan->stages.offsets[stage];
     cmplx *tw_sequential = &plan->twiddles_ordered[tw_offset];
-    if (count == 1) {
-        for (int i = 0; i < radix; i++) {
+    if (count == 1)
+    {
+        for (int i = 0; i < radix; i++)
+        {
             out[i] = in[i * sign];
         }
-    } else {
+    }
+    else
+    {
         const int cur_sign = sign * radix;
-        for (int i = 0; i < radix; ++i) {
+        for (int i = 0; i < radix; ++i)
+        {
             stb_recursive_mixed_radix_idit
-                    (plan, stage + 1, &in[sign * i], &out[count * i],
-                     cur_sign);
+            (plan, stage + 1, &in[sign * i], &out[count * i],
+             cur_sign);
         }
     }
-    switch (radix) {
-        case 2:
-            stb_radix_2_idit(tw_sequential, out, count);
-            break;
-        case 3:
-            stb_radix_3_idit(tw_sequential, out, count);
-            break;
-        case 4:
-            stb_radix_4_idit(tw_sequential, out, count);
-            break;
-        case 5:
-            stb_radix_5_idit(tw_sequential, out, count);
-            break;
-        case 6:
-            stb_radix_6_idit(tw_sequential, out, count);
-            break;
-        case 7:
-            stb_radix_7_idit(tw_sequential, out, count);
-            break;
-        case 8:
-            stb_radix_8_idit(tw_sequential, out, count);
-            break;
-        default:
-            stb_general_dit(twiddles, out, count, sign, radix, plan->N, 1);
-            break;
+    switch (radix)
+    {
+    case 2:
+        stb_radix_2_idit(tw_sequential, out, count);
+        break;
+    case 3:
+        stb_radix_3_idit(tw_sequential, out, count);
+        break;
+    case 4:
+        stb_radix_4_idit(tw_sequential, out, count);
+        break;
+    case 5:
+        stb_radix_5_idit(tw_sequential, out, count);
+        break;
+    case 6:
+        stb_radix_6_idit(tw_sequential, out, count);
+        break;
+    case 7:
+        stb_radix_7_idit(tw_sequential, out, count);
+        break;
+    case 8:
+        stb_radix_8_idit(tw_sequential, out, count);
+        break;
+    default:
+        stb_general_dit(twiddles, out, count, sign, radix, plan->N, 1);
+        break;
     }
 }
 
 
-void stb_fft_exec(const stb_fft_plan *plan, cmplx *in, cmplx *out) {
-    if (in == out) {
+void stb_fft_exec(const stb_fft_plan *plan, cmplx *in, cmplx *out)
+{
+    if (in == out)
+    {
         cmplx *buf = (cmplx *) calloc(plan->N, sizeof(cmplx));
         if (buf == NULL)
             return;
         stb_recursive_mixed_radix_dit(plan, 0, in, buf, 1);
         memcpy(out, buf, sizeof(cmplx) * plan->N);
         free(buf);
-    } else {
+    }
+    else
+    {
         stb_recursive_mixed_radix_dit(plan, 0, in, out, 1);
     }
 }
 
-void stb_ifft_exec(const stb_fft_plan *plan, cmplx *in, cmplx *out) {
-    if (in == out) {
+void stb_ifft_exec(const stb_fft_plan *plan, cmplx *in, cmplx *out)
+{
+    if (in == out)
+    {
         cmplx *buf = (cmplx *) calloc(plan->N, sizeof(cmplx));
         if (buf == NULL)
             return;
         stb_recursive_mixed_radix_idit(plan, 0, in, buf, 1);
         memcpy(out, buf, sizeof(cmplx) * plan->N);
         free(buf);
-    } else {
+    }
+    else
+    {
         stb_recursive_mixed_radix_idit(plan, 0, in, out, 1);
     }
 }
 
-void stb_fft_r2c_exec(stb_fft_real_plan *plan, const stb_real_t *input, cmplx *output) {
+void stb_fft_r2c_exec(stb_fft_real_plan *plan, const stb_real_t *input, cmplx *output)
+{
     int n = plan->half_plan->N;
     stb_fft_exec(plan->half_plan, (cmplx *) input, plan->buffer);
     cmplx tdc = plan->buffer[0];
@@ -1821,7 +1919,8 @@ void stb_fft_r2c_exec(stb_fft_real_plan *plan, const stb_real_t *input, cmplx *o
     output[n].real = tdc.real - tdc.imag;
     output[0].imag = 0.0;
     output[n].imag = output[0].imag;
-    for (int c = 1; c <= n / 2; ++c) {
+    for (int c = 1; c <= n / 2; ++c)
+    {
         cmplx t = plan->buffer[n - c];
         t.imag = -t.imag;
         stb_real_t r = (plan->twiddles[c - 1].real * (plan->buffer[c].real - t.real)) -
@@ -1835,11 +1934,13 @@ void stb_fft_r2c_exec(stb_fft_real_plan *plan, const stb_real_t *input, cmplx *o
     }
 }
 
-void stb_fft_c2r_exec(stb_fft_real_plan *plan, const cmplx *input, stb_real_t *output) {
+void stb_fft_c2r_exec(stb_fft_real_plan *plan, const cmplx *input, stb_real_t *output)
+{
     int n = plan->half_plan->N;
     plan->buffer[0].real = input[n].real + input[0].real;
     plan->buffer[0].imag = input[0].real - input[n].real;
-    for (int c = 1; c <= n / 2; ++c) {
+    for (int c = 1; c <= n / 2; ++c)
+    {
         cmplx t = input[n - c];
         t.imag = -t.imag;
         stb_real_t r = (plan->twiddles[c - 1].real * (input[c].real - t.real)) +
@@ -1854,49 +1955,61 @@ void stb_fft_c2r_exec(stb_fft_real_plan *plan, const cmplx *input, stb_real_t *o
     stb_ifft_exec(plan->half_plan, plan->buffer, (cmplx *) output);
 }
 
-void STB_FFT(cmplx *input, cmplx *output, int n) {
-    if (n < 2) {
+void STB_FFT(cmplx *input, cmplx *output, int n)
+{
+    if (n < 2)
+    {
         output[0] = input[0];
         return;
     }
     stb_fft_plan *plan = stb_fft_plan_dft_1d(n);
-    if (plan != NULL) {
+    if (plan != NULL)
+    {
         stb_fft_exec(plan, input, output);
         free(plan);
     }
 }
 
-void STB_IFFT(cmplx *input, cmplx *output, int n) {
-    if (n < 2) {
+void STB_IFFT(cmplx *input, cmplx *output, int n)
+{
+    if (n < 2)
+    {
         output[0] = input[0];
         return;
     }
     stb_fft_plan *plan = stb_fft_plan_dft_1d(n);
-    if (plan != NULL) {
+    if (plan != NULL)
+    {
         stb_ifft_exec(plan, input, output);
         free(plan);
     }
 }
 
-void STB_FFT_R2C(stb_real_t *input, cmplx *output, int n) {
-    if (n < 2) {
+void STB_FFT_R2C(stb_real_t *input, cmplx *output, int n)
+{
+    if (n < 2)
+    {
         output[0].real = input[0];
         return;
     }
     stb_fft_real_plan *stb_fft_plan = stb_fft_real_plan_dft_1d(n);
-    if (stb_fft_plan != NULL) {
+    if (stb_fft_plan != NULL)
+    {
         stb_fft_r2c_exec(stb_fft_plan, input, output);
         free(stb_fft_plan);
     }
 }
 
-void STB_IFFT_C2R(cmplx *input, stb_real_t *output, int n) {
-    if (n < 2) {
+void STB_IFFT_C2R(cmplx *input, stb_real_t *output, int n)
+{
+    if (n < 2)
+    {
         output[0] = input[0].real;
         return;
     }
     stb_fft_real_plan *stb_fft_plan = stb_fft_real_plan_dft_1d(n);
-    if (stb_fft_plan != NULL) {
+    if (stb_fft_plan != NULL)
+    {
         stb_fft_c2r_exec(stb_fft_plan, input, output);
         free(stb_fft_plan);
     }

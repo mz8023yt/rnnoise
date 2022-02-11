@@ -16,7 +16,8 @@
 o do is replace this function and rnnoise_free */
 #ifndef OVERRIDE_RNNOISE_ALLOC
 
-static RNN_INLINE void *rnnoise_alloc(size_t size) {
+static RNN_INLINE void *rnnoise_alloc(size_t size)
+{
     return malloc(size);
 }
 
@@ -25,7 +26,8 @@ static RNN_INLINE void *rnnoise_alloc(size_t size) {
 /** RNNoise wrapper for free(). To do your own dynamic allocation, all you need to do is replace this function and rnnoise_alloc */
 #ifndef OVERRIDE_RNNOISE_FREE
 
-static RNN_INLINE void rnnoise_free(void *ptr) {
+static RNN_INLINE void rnnoise_free(void *ptr)
+{
     if (ptr)
         free(ptr);
 }
