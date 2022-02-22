@@ -243,9 +243,9 @@ uint64_t Resample_f32(const float *input, float *output, int inSampleRate, int o
 
 void denoise_proc(float *input, uint64_t sampleCount, uint32_t sampleRate, uint32_t channels)
 {
-    uint32_t targetFrameSize = 480;
-    uint32_t targetSampleRate = 48000;
-    uint32_t perFrameSize = sampleRate / 100;
+    uint32_t targetFrameSize = 640;
+    uint32_t targetSampleRate = 16000;
+    uint32_t perFrameSize = sampleRate / 25;
     float *frameBuffer = (float *) malloc(sizeof(*frameBuffer) * (channels + 1) * targetFrameSize);
     float *processBuffer = frameBuffer + targetFrameSize * channels;
     DenoiseState **sts = malloc(channels * sizeof(DenoiseState *));
@@ -326,7 +326,13 @@ void rnnDeNoise(char *in_file, char *out_file)
     uint32_t sampleRate = 0;
     uint64_t sampleCount = 0;
     uint32_t channels = 0;
+
+    /* 解析 wav/mp3 音频格式头, 获取音频采样率/采样数/通道数/音频PCM数据 */
     float *buffer = wavRead_f32(in_file, &sampleRate, &sampleCount, &channels);
+    printf("channels    = %u\n", channels);
+    printf("sampleRate  = %u\n", sampleRate);
+    printf("sampleCount = %lu\n", sampleCount);
+
     if (buffer != NULL)
     {
         double startTime = now();
@@ -358,6 +364,7 @@ int main(int argc, char **argv)
     char *in_file = argv[1];
     if (argc > 2)
     {
+        /* 如果参数给出了输入文件名和输出文件名, 则直接进行降噪处理 */
         char *out_file = argv[2];
         rnnDeNoise(in_file, out_file);
     }
@@ -368,6 +375,8 @@ int main(int argc, char **argv)
         char fname[256];
         char ext[256];
         char out_file[1024];
+
+        /* 如果参数仅给出了输入文件名, 则在文件名后添加out后缀生成输出文件名 */
         splitpath(in_file, drive, dir, fname, ext);
         sprintf(out_file, "%s%s%s_out.wav", drive, dir, fname);
         rnnDeNoise(in_file, out_file);
